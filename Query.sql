@@ -14,7 +14,25 @@ SELECT * FROM table_borough;
 SELECT DISTINCT "ACTION"
 from restaurant_inspection_dataset;
 
+-- TODO: CREATE TABLE ACTION
+create table public.table_action
+(
+    id  serial primary key,
+    action text
+);
+
+INSERT INTO table_action (action)
+SELECT DISTINCT "ACTION"
+FROM public.restaurant_inspection_dataset
+ORDER BY "ACTION";
+
 SELECT * FROM table_action;
+
+INSERT INTO table_borough (borough)
+SELECT DISTINCT "BORO"
+FROM public.restaurant_inspection_dataset
+ORDER BY "BORO";
+
 
 SELECT * FROM table_grade_type;
 
