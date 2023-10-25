@@ -14,32 +14,7 @@ SELECT * FROM table_borough;
 SELECT DISTINCT "ACTION"
 from restaurant_inspection_dataset;
 
--- TODO: CREATE TABLE ACTION
-create table public.table_action
-(
-    id  serial primary key,
-    action text
-);
-
-INSERT INTO table_action (action)
-SELECT DISTINCT "ACTION"
-FROM public.restaurant_inspection_dataset
-ORDER BY "ACTION";
-
-SELECT * FROM table_action;
-
-INSERT INTO table_borough (borough)
-SELECT DISTINCT "BORO"
-FROM public.restaurant_inspection_dataset
-ORDER BY "BORO";
-
-
-SELECT * FROM table_grade_type;
-
-SELECT * FROM table_inspection_type;
-
-SELECT * FROM table_restaurant;
-
+-- TODO: TABLE BOROUGH TYPE
 
 CREATE TABLE table_borough
 (
@@ -48,15 +23,15 @@ CREATE TABLE table_borough
 );
 
 INSERT INTO table_borough (borough)
-SELECT DISTINCT "BORO"
+SELECT DISTINCT COALESCE("BORO", NULL)
 FROM public.restaurant_inspection_dataset
-ORDER BY "BORO";
+ORDER BY COALESCE("BORO", NULL);
 
 SELECT *
 FROM table_borough;
+-- TODO: ==============================================
 
-
--- TO CREATE ADDRESS TABLE
+-- TODO: ADDRESS TABLE
 SELECT COUNT(*)
 FROM (SELECT DISTINCT "BUILDING", "STREET", "ZIPCODE", tb.id as "Borough Number", "Latitude", "Longitude"
       FROM public.restaurant_inspection_dataset rid
@@ -67,21 +42,39 @@ CREATE TABLE table_address (
     BUILDING TEXT,
     STREET TEXT,
     ZIPCODE DOUBLE PRECISION,
-    "BOROUGH" INTEGER,
+    BOROUGH_ID INTEGER,
     Latitude  DOUBLE PRECISION,
-    Longitude  DOUBLE PRECISION
+    Longitude  DOUBLE PRECISION,
+    CONSTRAINT fk_borough FOREIGN KEY (BOROUGH_ID) REFERENCES table_borough (id)
 );
 
-INSERT INTO table_address (BUILDING, STREET, ZIPCODE, "BOROUGH", Latitude, Longitude)
+INSERT INTO table_address (BUILDING, STREET, ZIPCODE, BOROUGH_ID, Latitude, Longitude)
 SELECT DISTINCT "BUILDING", "STREET", "ZIPCODE", tb.id as "Borough Number", "Latitude", "Longitude"
 FROM public.restaurant_inspection_dataset rid
 LEFT JOIN table_borough tb ON rid."BORO" = tb.borough
 ORDER BY "ZIPCODE";
 
 CREATE INDEX idx_location
-ON table_address (building, street, zipcode, "BOROUGH", latitude, longitude);
+ON table_address (building, street, zipcode, BOROUGH_ID, latitude, longitude);
 
 SELECT * from table_address;
+-- TODO: ==============================================
+
+-- TODO: TABLE ACTION TYPE
+create table public.table_action_type
+(
+    id  serial primary key,
+    action text
+);
+
+INSERT INTO table_action_type (action)
+SELECT DISTINCT COALESCE("ACTION", NULL)
+FROM public.restaurant_inspection_dataset
+ORDER BY COALESCE("ACTION", NULL);
+
+SELECT * FROM table_action_type;
+
+-- TODO: TABLE INSPECTION TYPE
 
 SELECT DISTINCT "INSPECTION TYPE"
 from restaurant_inspection_dataset;
@@ -93,15 +86,16 @@ CREATE TABLE table_inspection_type
 );
 
 INSERT INTO table_inspection_type (inspection_type)
-SELECT DISTINCT "INSPECTION TYPE"
-FROM public.restaurant_inspection_dataset;
+SELECT DISTINCT COALESCE("INSPECTION TYPE", NULL)
+FROM public.restaurant_inspection_dataset
+ORDER BY COALESCE("INSPECTION TYPE", NULL);
 
-SELECT *
-from table_inspection_type;
+SELECT * from table_inspection_type;
+
+-- TODO: TABLE GRADE TYPE
 
 SELECT DISTINCT "GRADE"
 from restaurant_inspection_dataset;
-
 
 CREATE TABLE table_grade_type
 (
@@ -110,29 +104,71 @@ CREATE TABLE table_grade_type
 );
 
 INSERT INTO table_grade_type (grade)
-SELECT DISTINCT "GRADE"
+SELECT DISTINCT COALESCE("GRADE", NULL)
 FROM public.restaurant_inspection_dataset
-ORDER BY "GRADE";
+ORDER BY COALESCE("GRADE", NULL);
 
-SELECT *
-FROM table_grade_type;
+SELECT * FROM table_grade_type;
 
-SELECT DISTINCT "ACTION", "CRITICAL FLAG", "SCORE", "GRADE", "GRADE DATE", "INSPECTION TYPE"
-from public.restaurant_inspection_dataset;
+-- TODO: TABLE CRITICAL FLAG
 
-SELECT COUNT(*)
-FROM (SELECT DISTINCT "ACTION", "CRITICAL FLAG", "SCORE", "GRADE", tit.inspection_type
-      FROM restaurant_inspection_dataset rid
-               LEFT JOIN table_inspection_type tit on rid."INSPECTION TYPE" = tit.inspection_type
-      )
-    AS subquery;
+CREATE TABLE table_critical_flag
+(
+    id    SERIAL PRIMARY KEY,
+    "critical_flag" TEXT
+);
 
-
-SELECT "CAMIS", COUNT(*) as Frequency
+INSERT INTO table_critical_flag (critical_flag)
+SELECT DISTINCT COALESCE("CRITICAL FLAG",NULL)
 FROM public.restaurant_inspection_dataset
-GROUP BY "CAMIS"
-HAVING COUNT(*) > 1;
+ORDER BY COALESCE("CRITICAL FLAG",NULL);
 
+SELECT * from table_critical_flag;
+
+-- TODO: ==============================================
+
+
+-- TODO : TABLE FOR INSPECTION
+
+CREATE TABLE table_inspection_results (
+    id    SERIAL PRIMARY KEY,
+    action_id INT ,
+    critical_flag_id INT ,
+    grade_type_id INT ,
+    inspection_type_id INT ,
+    "SCORE" DOUBLE PRECISION,
+    FOREIGN KEY (action_id) REFERENCES table_action_type (id),
+    FOREIGN KEY (critical_flag_id) REFERENCES table_critical_flag (id),
+    FOREIGN KEY (grade_type_id) REFERENCES table_grade_type (id),
+    FOREIGN KEY (inspection_type_id) REFERENCES table_inspection_type (id)
+);
+
+INSERT INTO table_inspection_results
+    (action_id, critical_flag_id, grade_type_id,  inspection_type_id, "SCORE")
+SELECT
+    a.id AS action_id,
+    cf.id AS critical_flag_id,
+    gt.id AS grade_type_id,
+    it.id AS inspection_type_id,
+    "SCORE"
+FROM
+    restaurant_inspection_dataset id
+    LEFT JOIN table_action_type a ON id."ACTION" = a.action
+    LEFT JOIN table_critical_flag cf ON id."CRITICAL FLAG" = cf.critical_flag
+    LEFT JOIN table_grade_type gt ON id."GRADE" = gt.grade
+    LEFT JOIN table_inspection_type it ON id."INSPECTION TYPE" = it.inspection_type;
+
+SELECT * FROM table_inspection_results;
+
+-- TODO : TABLE FOR INSPECTION
+
+CREATE TABLE inspection (
+    "INSPECTION DATE" text,
+    "GRADE DATE" text,
+    "INSPECTION RESULT" int
+);
+
+-- TODO : TABLE FOR INSPECTION
 
 CREATE TABLE table_restaurant
 (
@@ -148,7 +184,7 @@ CREATE TABLE table_restaurant
 
 SELECT * from table_address;
 
-EXPLAIN
+
 INSERT INTO table_restaurant (CAMIS, DBA, ADDRESS, PHONE, CUISINE_DESCRIPTION)
 SELECT M."CAMIS",
        M."DBA",
@@ -167,4 +203,38 @@ SELECT *
 FROM public.table_restaurant;
 
 
-SELECT
+
+
+
+
+
+
+
+
+-- SELECT "CAMIS", COUNT(*) as Frequency
+-- FROM public.restaurant_inspection_dataset
+-- GROUP BY "CAMIS"
+-- HAVING COUNT(*) > 1
+-- ORDER BY Frequency DESC;
+
+
+
+-- SELECT DISTINCT "CRITICAL FLAG"
+-- from public.restaurant_inspection_dataset;
+
+
+-- SELECT COUNT(*)
+-- FROM (
+-- SELECT DISTINCT "ACTION", "CRITICAL FLAG", "SCORE", "GRADE",  "INSPECTION TYPE"
+-- from public.restaurant_inspection_dataset
+--      )
+--     AS subquery;
+-- SELECT DISTINCT "RECORD DATE"
+-- from public.restaurant_inspection_dataset;
+--
+
+-- SELECT COUNT(*)
+-- FROM (
+--     SELECT DISTINCT "INSPECTION DATE", "CRITICAL FLAG", "SCORE", "GRADE","GRADE DATE"
+--     FROM restaurant_inspection_dataset rid
+-- )   AS subquery;
