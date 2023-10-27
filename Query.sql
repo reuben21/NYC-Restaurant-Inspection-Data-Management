@@ -1,18 +1,12 @@
 SELECT COUNT(*)
 FROM (SELECT *
-      from public.restaurant_inspection_dataset
+      from public.table_restaurant_inspection_dataset
       WHERE "DBA" IS NOT NULL) AS subquery;
 
 SELECT *
-from public.restaurant_inspection_dataset;
+from public.table_restaurant_inspection_dataset;
 
-SELECT DISTINCT "BORO"
-from restaurant_inspection_dataset;
 
-SELECT * FROM table_borough;
-
-SELECT DISTINCT "ACTION"
-from restaurant_inspection_dataset;
 
 -- TODO: TABLE BOROUGH TYPE
 
@@ -24,7 +18,7 @@ CREATE TABLE table_borough
 
 INSERT INTO table_borough (borough)
 SELECT DISTINCT COALESCE("BORO", NULL)
-FROM public.restaurant_inspection_dataset
+FROM public.table_restaurant_inspection_dataset
 ORDER BY COALESCE("BORO", NULL);
 
 SELECT *
@@ -34,7 +28,7 @@ FROM table_borough;
 -- TODO: ADDRESS TABLE
 SELECT COUNT(*)
 FROM (SELECT DISTINCT "BUILDING", "STREET", "ZIPCODE", tb.id as "Borough Number", "Latitude", "Longitude"
-      FROM public.restaurant_inspection_dataset rid
+      FROM public.table_restaurant_inspection_dataset rid
                LEFT JOIN table_borough tb on rid."BORO" = tb.borough) AS subquery;
 
 CREATE TABLE table_address (
@@ -50,7 +44,7 @@ CREATE TABLE table_address (
 
 INSERT INTO table_address (BUILDING, STREET, ZIPCODE, BOROUGH_ID, Latitude, Longitude)
 SELECT DISTINCT "BUILDING", "STREET", "ZIPCODE", tb.id as "Borough Number", "Latitude", "Longitude"
-FROM public.restaurant_inspection_dataset rid
+FROM public.table_restaurant_inspection_dataset rid
 LEFT JOIN table_borough tb ON rid."BORO" = tb.borough
 ORDER BY "ZIPCODE";
 
@@ -69,7 +63,7 @@ create table public.table_action_type
 
 INSERT INTO table_action_type (action)
 SELECT DISTINCT COALESCE("ACTION", NULL)
-FROM public.restaurant_inspection_dataset
+FROM public.table_restaurant_inspection_dataset
 ORDER BY COALESCE("ACTION", NULL);
 
 SELECT * FROM table_action_type;
@@ -87,7 +81,7 @@ CREATE TABLE table_inspection_type
 
 INSERT INTO table_inspection_type (inspection_type)
 SELECT DISTINCT COALESCE("INSPECTION TYPE", NULL)
-FROM public.restaurant_inspection_dataset
+FROM public.table_restaurant_inspection_dataset
 ORDER BY COALESCE("INSPECTION TYPE", NULL);
 
 SELECT * from table_inspection_type;
@@ -105,7 +99,7 @@ CREATE TABLE table_grade_type
 
 INSERT INTO table_grade_type (grade)
 SELECT DISTINCT COALESCE("GRADE", NULL)
-FROM public.restaurant_inspection_dataset
+FROM public.table_restaurant_inspection_dataset
 ORDER BY COALESCE("GRADE", NULL);
 
 SELECT * FROM table_grade_type;
@@ -120,7 +114,7 @@ CREATE TABLE table_critical_flag
 
 INSERT INTO table_critical_flag (critical_flag)
 SELECT DISTINCT COALESCE("CRITICAL FLAG",NULL)
-FROM public.restaurant_inspection_dataset
+FROM public.table_restaurant_inspection_dataset
 ORDER BY COALESCE("CRITICAL FLAG",NULL);
 
 SELECT * from table_critical_flag;
@@ -132,6 +126,7 @@ SELECT * from table_critical_flag;
 
 CREATE TABLE table_inspection_results (
     id    SERIAL PRIMARY KEY,
+    refer_id INT,
     action_id INT ,
     critical_flag_id INT ,
     grade_type_id INT ,
@@ -144,29 +139,41 @@ CREATE TABLE table_inspection_results (
 );
 
 INSERT INTO table_inspection_results
-    (action_id, critical_flag_id, grade_type_id,  inspection_type_id, "SCORE")
+    (refer_id,action_id, critical_flag_id, grade_type_id,  inspection_type_id, "SCORE")
 SELECT
-    a.id AS action_id,
-    cf.id AS critical_flag_id,
-    gt.id AS grade_type_id,
-    it.id AS inspection_type_id,
-    "SCORE"
-FROM
-    restaurant_inspection_dataset id
-    LEFT JOIN table_action_type a ON id."ACTION" = a.action
-    LEFT JOIN table_critical_flag cf ON id."CRITICAL FLAG" = cf.critical_flag
-    LEFT JOIN table_grade_type gt ON id."GRADE" = gt.grade
-    LEFT JOIN table_inspection_type it ON id."INSPECTION TYPE" = it.inspection_type;
+        rid."ID" as refer_id,
+        a.id AS action_id, cf.id AS critical_flag_id, gt.id AS grade_type_id, it.id AS inspection_type_id, "SCORE"
+    FROM table_restaurant_inspection_dataset rid
+    LEFT JOIN table_action_type a ON rid."ACTION" = a.action
+    LEFT JOIN table_critical_flag cf ON rid."CRITICAL FLAG" = cf.critical_flag
+    LEFT JOIN table_grade_type gt ON rid."GRADE" = gt.grade
+    LEFT JOIN table_inspection_type it ON rid."INSPECTION TYPE" = it.inspection_type;
+--     GROUP BY action_id, critical_flag_id, grade_type_id, inspection_type_id, "SCORE";
 
 SELECT * FROM table_inspection_results;
 
 -- TODO : TABLE FOR INSPECTION
-
-CREATE TABLE inspection (
-    "INSPECTION DATE" text,
-    "GRADE DATE" text,
-    "INSPECTION RESULT" int
-);
+-- SELECT COUNT(*)
+-- FROM (
+--
+-- SELECT DISTINCT r."INSPECTION DATE", r."GRADE DATE", i.id as "INSPECTION_RESULT"
+-- FROM table_restaurant_inspection_dataset r
+-- JOIN table_inspection_results i ON
+--      i.refer_id = r."ID"
+-- ) as subquery;
+--
+-- CREATE TABLE inspection (
+--     ID    SERIAL PRIMARY KEY,
+--
+-- );
+--
+-- INSERT INTO inspection ("INSPECTION DATE", "GRADE DATE", "INSPECTION RESULT")
+-- SELECT DISTINCT r."INSPECTION DATE", r."GRADE DATE", i.id as "INSPECTION RESULT"
+-- FROM table_restaurant_inspection_dataset r
+-- JOIN table_inspection_results i ON i.refer_id = r."ID";
+--
+-- SELECT * FROM inspection;
+-- SELECT * FROM inspection WHERE "INSPECTION DATE" = '09/19/2023';
 
 -- TODO : TABLE FOR INSPECTION
 
@@ -178,6 +185,9 @@ CREATE TABLE table_restaurant
     ADDRESS             INT,
     PHONE               TEXT,
     CUISINE_DESCRIPTION INT,
+    "INSPECTION DATE" text,
+    "GRADE DATE" text,
+    "INSPECTION RESULT" int,
     CONSTRAINT fk_cuisine FOREIGN KEY (CUISINE_DESCRIPTION) REFERENCES table_cuisine (id),
     CONSTRAINT fk_address FOREIGN KEY (ADDRESS) REFERENCES table_address (id)
 );
@@ -185,22 +195,35 @@ CREATE TABLE table_restaurant
 SELECT * from table_address;
 
 
-INSERT INTO table_restaurant (CAMIS, DBA, ADDRESS, PHONE, CUISINE_DESCRIPTION)
-SELECT M."CAMIS",
-       M."DBA",
-       ta.id,
-       M."PHONE",
-       C.id
-FROM public.restaurant_inspection_dataset M
+INSERT INTO table_restaurant (
+    CAMIS,
+    DBA,
+    ADDRESS,
+    PHONE,
+    CUISINE_DESCRIPTION,
+    "INSPECTION DATE",
+    "GRADE DATE",
+    "INSPECTION RESULT"
+)
+SELECT
+    M."CAMIS",
+    M."DBA",
+    ta.id,
+    M."PHONE",
+    C.id,
+    M."INSPECTION DATE",
+    M."GRADE DATE",
+   IR.ID as "INSPECTION RESULT"
+FROM public.table_restaurant_inspection_dataset M
 LEFT JOIN table_cuisine C ON M."CUISINE DESCRIPTION" = C.cuisine_description
 LEFT JOIN table_address ta
      ON M."BUILDING" = ta.BUILDING
      AND M."STREET" = ta."street"
      AND M."ZIPCODE" = ta."zipcode"
+LEFT JOIN table_inspection_results IR ON IR.refer_id = M."ID"
 WHERE M."DBA" IS NOT NULL;
 
-SELECT *
-FROM public.table_restaurant;
+SELECT COUNT(*) FROM table_restaurant;
 
 
 
@@ -212,7 +235,7 @@ FROM public.table_restaurant;
 
 
 -- SELECT "CAMIS", COUNT(*) as Frequency
--- FROM public.restaurant_inspection_dataset
+-- FROM public.table_restaurant_inspection_dataset
 -- GROUP BY "CAMIS"
 -- HAVING COUNT(*) > 1
 -- ORDER BY Frequency DESC;
@@ -220,17 +243,17 @@ FROM public.table_restaurant;
 
 
 -- SELECT DISTINCT "CRITICAL FLAG"
--- from public.restaurant_inspection_dataset;
+-- from public.table_restaurant_inspection_dataset;
 
 
 -- SELECT COUNT(*)
 -- FROM (
 -- SELECT DISTINCT "ACTION", "CRITICAL FLAG", "SCORE", "GRADE",  "INSPECTION TYPE"
--- from public.restaurant_inspection_dataset
+-- from public.table_restaurant_inspection_dataset
 --      )
 --     AS subquery;
 -- SELECT DISTINCT "RECORD DATE"
--- from public.restaurant_inspection_dataset;
+-- from public.table_restaurant_inspection_dataset;
 --
 
 -- SELECT COUNT(*)
@@ -238,3 +261,33 @@ FROM public.table_restaurant;
 --     SELECT DISTINCT "INSPECTION DATE", "CRITICAL FLAG", "SCORE", "GRADE","GRADE DATE"
 --     FROM restaurant_inspection_dataset rid
 -- )   AS subquery;
+
+
+SELECT COUNT(*)
+FROM (
+    SELECT DISTINCT
+    a.id AS action_id,
+    cf.id AS critical_flag_id,
+    gt.id AS grade_type_id,
+    it.id AS inspection_type_id,
+    "SCORE"
+FROM
+    table_restaurant_inspection_dataset rid
+    LEFT JOIN table_action_type a ON rid."ACTION" = a.action
+    LEFT JOIN table_critical_flag cf ON rid."CRITICAL FLAG" = cf.critical_flag
+    LEFT JOIN table_grade_type gt ON rid."GRADE" = gt.grade
+    LEFT JOIN table_inspection_type it ON rid."INSPECTION TYPE" = it.inspection_type
+) as subquery;
+
+SELECT COUNT(*)
+FROM (
+    SELECT
+        MIN(rid."ID") as main_id,
+        a.id AS action_id, cf.id AS critical_flag_id, gt.id AS grade_type_id, it.id AS inspection_type_id, "SCORE"
+    FROM table_restaurant_inspection_dataset rid
+    LEFT JOIN table_action_type a ON rid."ACTION" = a.action
+    LEFT JOIN table_critical_flag cf ON rid."CRITICAL FLAG" = cf.critical_flag
+    LEFT JOIN table_grade_type gt ON rid."GRADE" = gt.grade
+    LEFT JOIN table_inspection_type it ON rid."INSPECTION TYPE" = it.inspection_type
+    GROUP BY action_id, critical_flag_id, grade_type_id, inspection_type_id, "SCORE"
+) as subquery;

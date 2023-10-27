@@ -1,0 +1,97 @@
+create table table_restaurant_inspection_dataset
+(
+    "ID"                    SERIAL PRIMARY KEY,
+    "CAMIS"                 bigint,
+    "DBA"                   text,
+    "BORO"                  text,
+    "BUILDING"              text,
+    "STREET"                text,
+    "ZIPCODE"               double precision,
+    "PHONE"                 text,
+    "CUISINE DESCRIPTION"   text,
+    "INSPECTION DATE"       text,
+    "ACTION"                text,
+    "VIOLATION CODE"        text,
+    "VIOLATION DESCRIPTION" text,
+    "CRITICAL FLAG"         text,
+    "SCORE"                 double precision,
+    "GRADE"                 text,
+    "GRADE DATE"            text,
+    "RECORD DATE"           text,
+    "INSPECTION TYPE"       text,
+    "Latitude"              double precision,
+    "Longitude"             double precision,
+    "Community Board"       double precision,
+    "Council District"      double precision,
+    "Census Tract"          double precision,
+    "BIN"                   double precision,
+    "BBL"                   double precision,
+    "NTA"                   text,
+    "Location Point1"       double precision
+);
+
+INSERT INTO table_restaurant_inspection_dataset (
+    "CAMIS",
+    "DBA",
+    "BORO",
+    "BUILDING",
+    "STREET",
+    "ZIPCODE",
+    "PHONE",
+    "CUISINE DESCRIPTION",
+    "INSPECTION DATE",
+    "ACTION",
+    "VIOLATION CODE",
+    "VIOLATION DESCRIPTION",
+    "CRITICAL FLAG",
+    "SCORE",
+    "GRADE",
+    "GRADE DATE",
+    "RECORD DATE",
+    "INSPECTION TYPE",
+    "Latitude",
+    "Longitude",
+    "Community Board",
+    "Council District",
+    "Census Tract",
+    "BIN",
+    "BBL",
+    "NTA",
+    "Location Point1"
+)
+SELECT
+    "CAMIS",
+    "DBA",
+    "BORO",
+    "BUILDING",
+    "STREET",
+    "ZIPCODE",
+    "PHONE",
+    "CUISINE DESCRIPTION",
+    "INSPECTION DATE",
+    "ACTION",
+    "VIOLATION CODE",
+    "VIOLATION DESCRIPTION",
+    "CRITICAL FLAG",
+    "SCORE",
+    "GRADE",
+    "GRADE DATE",
+    "RECORD DATE",
+    "INSPECTION TYPE",
+    "Latitude",
+    "Longitude",
+    "Community Board",
+    "Council District",
+    "Census Tract",
+    "BIN",
+    "BBL",
+    "NTA",
+    "Location Point1"
+FROM public.restaurant_inspection_dataset
+WHERE "DBA" IS NOT NULL AND "VIOLATION CODE" IS NOT NULL
+ORDER BY "INSPECTION DATE";
+
+SELECT COUNT(*)
+FROM (
+SELECT * FROM table_restaurant_inspection_dataset where "CAMIS" = '50114976'
+) AS subquery;
