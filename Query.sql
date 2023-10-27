@@ -153,29 +153,6 @@ SELECT
 SELECT * FROM table_inspection_results;
 
 -- TODO : TABLE FOR INSPECTION
--- SELECT COUNT(*)
--- FROM (
---
--- SELECT DISTINCT r."INSPECTION DATE", r."GRADE DATE", i.id as "INSPECTION_RESULT"
--- FROM table_restaurant_inspection_dataset r
--- JOIN table_inspection_results i ON
---      i.refer_id = r."ID"
--- ) as subquery;
---
--- CREATE TABLE inspection (
---     ID    SERIAL PRIMARY KEY,
---
--- );
---
--- INSERT INTO inspection ("INSPECTION DATE", "GRADE DATE", "INSPECTION RESULT")
--- SELECT DISTINCT r."INSPECTION DATE", r."GRADE DATE", i.id as "INSPECTION RESULT"
--- FROM table_restaurant_inspection_dataset r
--- JOIN table_inspection_results i ON i.refer_id = r."ID";
---
--- SELECT * FROM inspection;
--- SELECT * FROM inspection WHERE "INSPECTION DATE" = '09/19/2023';
-
--- TODO : TABLE FOR INSPECTION
 
 CREATE TABLE table_restaurant
 (
@@ -185,9 +162,11 @@ CREATE TABLE table_restaurant
     ADDRESS             INT,
     PHONE               TEXT,
     CUISINE_DESCRIPTION INT,
+    VIOLATION_ID INT,
     "INSPECTION DATE" text,
     "GRADE DATE" text,
     "INSPECTION RESULT" int,
+    CONSTRAINT fk_violation FOREIGN KEY (VIOLATION_ID) REFERENCES table_violation (id),
     CONSTRAINT fk_cuisine FOREIGN KEY (CUISINE_DESCRIPTION) REFERENCES table_cuisine (id),
     CONSTRAINT fk_address FOREIGN KEY (ADDRESS) REFERENCES table_address (id)
 );
@@ -201,6 +180,7 @@ INSERT INTO table_restaurant (
     ADDRESS,
     PHONE,
     CUISINE_DESCRIPTION,
+    VIOLATION_ID,
     "INSPECTION DATE",
     "GRADE DATE",
     "INSPECTION RESULT"
@@ -211,11 +191,13 @@ SELECT
     ta.id,
     M."PHONE",
     C.id,
+    V.id,
     M."INSPECTION DATE",
     M."GRADE DATE",
    IR.ID as "INSPECTION RESULT"
 FROM public.table_restaurant_inspection_dataset M
 LEFT JOIN table_cuisine C ON M."CUISINE DESCRIPTION" = C.cuisine_description
+LEFT JOIN table_violation V ON M."VIOLATION CODE" = V.violation_code
 LEFT JOIN table_address ta
      ON M."BUILDING" = ta.BUILDING
      AND M."STREET" = ta."street"
