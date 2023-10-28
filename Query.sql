@@ -165,10 +165,11 @@ CREATE TABLE table_restaurant
     VIOLATION_ID INT,
     "INSPECTION DATE" text,
     "GRADE DATE" text,
-    "INSPECTION RESULT" int,
+    INSPECTION_RESULT int,
     CONSTRAINT fk_violation FOREIGN KEY (VIOLATION_ID) REFERENCES table_violation (id),
     CONSTRAINT fk_cuisine FOREIGN KEY (CUISINE_DESCRIPTION) REFERENCES table_cuisine (id),
-    CONSTRAINT fk_address FOREIGN KEY (ADDRESS) REFERENCES table_address (id)
+    CONSTRAINT fk_address FOREIGN KEY (ADDRESS) REFERENCES table_address (id),
+    CONSTRAINT fk_inspection_result FOREIGN KEY (INSPECTION_RESULT) REFERENCES table_inspection_results (id)
 );
 
 SELECT * from table_address;
@@ -183,7 +184,7 @@ INSERT INTO table_restaurant (
     VIOLATION_ID,
     "INSPECTION DATE",
     "GRADE DATE",
-    "INSPECTION RESULT"
+    INSPECTION_RESULT
 )
 SELECT
     M."CAMIS",
