@@ -1,125 +1,4 @@
-SELECT COUNT(*)
-FROM (SELECT *
-      from public.table_restaurant_inspection_dataset
-      WHERE "DBA" IS NOT NULL) AS subquery;
 
-SELECT *
-from public.table_restaurant_inspection_dataset;
-
-
-
--- TODO: TABLE BOROUGH TYPE
-
-CREATE TABLE table_borough
-(
-    id      SERIAL PRIMARY KEY,
-    borough TEXT
-);
-
-INSERT INTO table_borough (borough)
-SELECT DISTINCT COALESCE("BORO", NULL)
-FROM public.table_restaurant_inspection_dataset
-ORDER BY COALESCE("BORO", NULL);
-
-SELECT *
-FROM table_borough;
--- TODO: ==============================================
-
--- TODO: ADDRESS TABLE
-SELECT COUNT(*)
-FROM (SELECT DISTINCT "BUILDING", "STREET", "ZIPCODE", tb.id as "Borough Number", "Latitude", "Longitude"
-      FROM public.table_restaurant_inspection_dataset rid
-               LEFT JOIN table_borough tb on rid."BORO" = tb.borough) AS subquery;
-
-CREATE TABLE table_address (
-    id      SERIAL PRIMARY KEY,
-    BUILDING TEXT,
-    STREET TEXT,
-    ZIPCODE DOUBLE PRECISION,
-    BOROUGH_ID INTEGER,
-    Latitude  DOUBLE PRECISION,
-    Longitude  DOUBLE PRECISION,
-    CONSTRAINT fk_borough FOREIGN KEY (BOROUGH_ID) REFERENCES table_borough (id)
-);
-
-INSERT INTO table_address (BUILDING, STREET, ZIPCODE, BOROUGH_ID, Latitude, Longitude)
-SELECT DISTINCT "BUILDING", "STREET", "ZIPCODE", tb.id as "Borough Number", "Latitude", "Longitude"
-FROM public.table_restaurant_inspection_dataset rid
-LEFT JOIN table_borough tb ON rid."BORO" = tb.borough
-ORDER BY "ZIPCODE";
-
-CREATE INDEX idx_location
-ON table_address (building, street, zipcode, BOROUGH_ID, latitude, longitude);
-
-SELECT * from table_address;
--- TODO: ==============================================
-
--- TODO: TABLE ACTION TYPE
-create table public.table_action_type
-(
-    id  serial primary key,
-    action text
-);
-
-INSERT INTO table_action_type (action)
-SELECT DISTINCT COALESCE("ACTION", NULL)
-FROM public.table_restaurant_inspection_dataset
-ORDER BY COALESCE("ACTION", NULL);
-
-SELECT * FROM table_action_type;
-
--- TODO: TABLE INSPECTION TYPE
-
-SELECT DISTINCT "INSPECTION TYPE"
-from restaurant_inspection_dataset;
-
-CREATE TABLE table_inspection_type
-(
-    id              SERIAL PRIMARY KEY,
-    inspection_type TEXT
-);
-
-INSERT INTO table_inspection_type (inspection_type)
-SELECT DISTINCT COALESCE("INSPECTION TYPE", NULL)
-FROM public.table_restaurant_inspection_dataset
-ORDER BY COALESCE("INSPECTION TYPE", NULL);
-
-SELECT * from table_inspection_type;
-
--- TODO: TABLE GRADE TYPE
-
-SELECT DISTINCT "GRADE"
-from restaurant_inspection_dataset;
-
-CREATE TABLE table_grade_type
-(
-    id    SERIAL PRIMARY KEY,
-    grade TEXT
-);
-
-INSERT INTO table_grade_type (grade)
-SELECT DISTINCT COALESCE("GRADE", NULL)
-FROM public.table_restaurant_inspection_dataset
-ORDER BY COALESCE("GRADE", NULL);
-
-SELECT * FROM table_grade_type;
-
--- TODO: TABLE CRITICAL FLAG
-
-CREATE TABLE table_critical_flag
-(
-    id    SERIAL PRIMARY KEY,
-    "critical_flag" TEXT
-);
-
-INSERT INTO table_critical_flag (critical_flag)
-SELECT DISTINCT COALESCE("CRITICAL FLAG",NULL)
-FROM public.table_restaurant_inspection_dataset
-ORDER BY COALESCE("CRITICAL FLAG",NULL);
-
-SELECT * from table_critical_flag;
-
--- TODO: ==============================================
 
 
 -- TODO : TABLE FOR INSPECTION
@@ -152,23 +31,40 @@ SELECT
 
 SELECT * FROM table_inspection_results;
 
+-- TODO : TABLE FOR RESTAURANT INFORMATION
+
+CREATE TABLE table_restaurant_info
+(
+    ID                  SERIAL PRIMARY KEY,
+    CAMIS               bigint,
+    DBA                 TEXT,
+    PHONE               TEXT,
+    ADDRESS_ID          INT,
+    CUISINE_ID INT,
+
+    CONSTRAINT fk_address FOREIGN KEY (ADDRESS_ID) REFERENCES table_address (id),
+    CONSTRAINT fk_cuisine FOREIGN KEY (CUISINE_ID) REFERENCES table_cuisine (id)
+
+);
+
+INSERT INTO table_restaurant_info (CAMIS, DBA,PHONE)
+SELECT DISTINCT "CAMIS", "DBA", "PHONE"
+FROM table_restaurant_inspection_dataset;
+
+SELECT count(*) FROM table_restaurant_info;
+
 -- TODO : TABLE FOR INSPECTION
 
 CREATE TABLE table_restaurant
 (
     ID                  SERIAL PRIMARY KEY,
-    CAMIS               bigint,
-    DBA                 TEXT,
-    ADDRESS             INT,
-    PHONE               TEXT,
-    CUISINE_DESCRIPTION INT,
+    RESTAURANT_INFO     INT,
     VIOLATION_ID INT,
     "INSPECTION DATE" text,
     "GRADE DATE" text,
     INSPECTION_RESULT int,
+    CONSTRAINT fk_restaurant_info FOREIGN KEY (RESTAURANT_INFO) REFERENCES table_restaurant_info (id),
     CONSTRAINT fk_violation FOREIGN KEY (VIOLATION_ID) REFERENCES table_violation (id),
-    CONSTRAINT fk_cuisine FOREIGN KEY (CUISINE_DESCRIPTION) REFERENCES table_cuisine (id),
-    CONSTRAINT fk_address FOREIGN KEY (ADDRESS) REFERENCES table_address (id),
     CONSTRAINT fk_inspection_result FOREIGN KEY (INSPECTION_RESULT) REFERENCES table_inspection_results (id)
 );
 
@@ -176,8 +72,7 @@ SELECT * from table_address;
 
 
 INSERT INTO table_restaurant (
-    CAMIS,
-    DBA,
+    RESTAURANT_INFO,
     ADDRESS,
     PHONE,
     CUISINE_DESCRIPTION,
@@ -187,8 +82,7 @@ INSERT INTO table_restaurant (
     INSPECTION_RESULT
 )
 SELECT
-    M."CAMIS",
-    M."DBA",
+    ri.id,
     ta.id,
     M."PHONE",
     C.id,
@@ -197,19 +91,22 @@ SELECT
     M."GRADE DATE",
    IR.ID as "INSPECTION RESULT"
 FROM public.table_restaurant_inspection_dataset M
+LEFT JOIN table_restaurant_info ri ON M."CAMIS" = ri.CAMIS
 LEFT JOIN table_cuisine C ON M."CUISINE DESCRIPTION" = C.cuisine_description
 LEFT JOIN table_violation V ON M."VIOLATION CODE" = V.violation_code
-LEFT JOIN table_address ta
-     ON M."BUILDING" = ta.BUILDING
-     AND M."STREET" = ta."street"
-     AND M."ZIPCODE" = ta."zipcode"
+
 LEFT JOIN table_inspection_results IR ON IR.refer_id = M."ID"
 WHERE M."DBA" IS NOT NULL;
 
-SELECT COUNT(*) FROM table_restaurant;
+SELECT"CAMIS", "DBA", "PHONE" FROM  public.table_restaurant_inspection_dataset;
 
 
+SELECT COUNT(*) FROM (
+    SELECT DISTINCT "CAMIS", "DBA" FROM  public.table_restaurant_inspection_dataset
+                     ) as subquery;
+SELECT "DBA","CUISINE DESCRIPTION"  FROM table_restaurant_inspection_dataset where "DBA" = 'BLEECKER SREET PIZZA';
 
+SELECT  "DBA" FROM table_restaurant_inspection_dataset;
 
 
 
