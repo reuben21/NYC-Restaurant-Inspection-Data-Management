@@ -298,7 +298,7 @@ SELECT
     LEFT JOIN table_critical_flag cf ON rid."CRITICAL FLAG" = cf.flag
     LEFT JOIN table_grade_type gt ON rid."GRADE" = gt.type;
 
-SELECT * FROM table_results;
+SELECT count(*) FROM table_results;
 
 
 -- TODO : TABLE FOR INSPECTION
