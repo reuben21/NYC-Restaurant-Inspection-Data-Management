@@ -1,5 +1,5 @@
 -- CREATE DATABASE FOR THE PROJECT
-CREATE DATABASE  nyc_restaurant_inspection;
+CREATE DATABASE nyc_restaurant_inspection;
 
 
 -- CONVERT THE DATASET TO RIGHT FORMAT
@@ -295,7 +295,10 @@ INSERT INTO table_results
     (refer_id,action_id, critical_flag_id, grade_type_id,  "SCORE")
 SELECT
         rid."ID" as refer_id,
-        a.id AS action_id, cf.id AS critical_flag_id, gt.id AS grade_type_id,  "SCORE"
+        a.id AS action_id,
+        cf.id AS critical_flag_id,
+        gt.id AS grade_type_id,
+        "SCORE"
     FROM table_restaurant_inspection_dataset rid
     LEFT JOIN table_action_type a ON rid."ACTION" = a.type
     LEFT JOIN table_critical_flag cf ON rid."CRITICAL FLAG" = cf.flag
