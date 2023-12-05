@@ -138,15 +138,35 @@ SELECT dr.Restaurant_Key,
        dc.Cuisine_Key,
        dgt.Grade_Type_Key,
        tri."SCORE"
-FROM table_restaurant_inspection_dataset tri
-         RIGHT JOIN dimension_Restaurant dr ON tri."CAMIS" = dr.CAMIS
-         RIGHT JOIN dimension_Violation dv ON tri."VIOLATION CODE" = dv.Violation_Code
+FROM table_inspection tri
+         RIGHT JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.Restaurant_Key
+         RIGHT JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
          RIGHT JOIN dimension_Inspection_Type dit ON tri."INSPECTION TYPE" = dit.Inspection_Type
          RIGHT JOIN dimension_Date di ON tri."INSPECTION DATE" = di.Complete_Date
          RIGHT JOIN dimension_Date dg ON tri."GRADE DATE" = dg.Complete_Date
          RIGHT JOIN dimension_Cuisine dc ON tri."CUISINE DESCRIPTION"= dc.Cuisine_Type
          RIGHT JOIN dimension_Grade_Type dgt ON tri."GRADE" = dgt.Grade_Type;
 
+SELECT count(dr.Restaurant_Key)
+FROM table_restaurant tr
+    JOIN dimension_Restaurant dr on dr.camis = tr.camis;
+
+-- TODO: CORRECT FACT TABLE BELOW COMING SOON
+SELECT dr.Restaurant_Key,
+       dv.Violation_Key,
+       dit.Inspection_Type_Key,
+       di.Date_Key as Inspection_Date_Key,
+       dg.Date_Key as Grade_Date_Key
+       FROM table_inspection tri
+       RIGHT JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.Restaurant_Key
+       RIGHT JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
+       RIGHT JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
+       RIGHT JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
+       RIGHT JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date;
+
+
+
+SELECT count(*) FROM table_results;
 
 SELECT *
 FROM Fact_Inspection;
