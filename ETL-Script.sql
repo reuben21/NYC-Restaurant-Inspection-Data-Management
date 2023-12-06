@@ -99,6 +99,8 @@ FROM table_violation;
 SELECT *
 FROM dimension_Violation;
 
+SELECT * FROM table_violation;
+
 -- TODO: DIMENSION INSPECTION DONE
 CREATE TABLE dimension_Inspection_Type
 (
@@ -113,6 +115,8 @@ FROM table_inspection_type;
 
 SELECT *
 FROM dimension_Inspection_Type;
+
+select * from table_inspection_type;
 
 -- TODO: DIMENSION DATE DONE
 CREATE TABLE dimension_Date
@@ -130,7 +134,7 @@ SELECT date_series,
        EXTRACT(YEAR FROM date_series)  AS Year,
        EXTRACT(MONTH FROM date_series) AS Month,
        EXTRACT(DAY FROM date_series)   AS Day
-FROM GENERATE_SERIES('2013-01-01'::date, CURRENT_DATE, '1 day') AS date_series;
+FROM GENERATE_SERIES('2015-01-01'::date, CURRENT_DATE, '1 day') AS date_series;
 
 SELECT *
 FROM dimension_Date;
@@ -227,73 +231,99 @@ SELECT dr.Restaurant_Key,
        trslts.action_id,
        trslts."SCORE"
 
-FROM table_results trslts,table_inspection tri
-         JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
-         JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
-         JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
-         JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
-         JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
-         where tri.inspection_result = trslts.id;
+FROM table_inspection tri
+         LEFT JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
+         LEFT JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
+         LEFT JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
+         LEFT JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
+         LEFT JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
+         LEFT JOIN  table_results trslts ON  trslts.id =tri.inspection_result;
 
-SELECT * FROM Fact_Inspection ;
-
-SELECT dr.Restaurant_Key,
-       dl.LocationKey,
-       dv.Violation_Key,
-       dit.Inspection_Type_Key,
-       di.Date_Key    as Inspection_Date_Key,
-       dg.Date_Key    as Grade_Date_Key,
-       trslts.critical_flag_id,
-       trslts.grade_type_id,
-       trslts."SCORE"
-
-FROM table_results trslts,
-     table_address ta,
-     dimension_location dl,
-     table_inspection tri
-         JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
-         JOIN dimension_location dl ON ta.id = dl.LocationKey
-         JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
-         JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
-         JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
-         JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
-         where tri.inspection_result = trslts.id;
+SELECT DISTINCT * FROM Fact_Inspection ;
 
 
+
+SELECT DISTINCT * from fact_inspection where Restaurant_Key = 5374;
+
+SELECT * FROM dimension_restaurant where RESTAURANT_KEY = 5374;
+
+SELECT * FROM table_inspection where restaurant_info = 5374;
 -- DATA CUBE
--- Create a temporary table to store aggregated results
-CREATE TEMPORARY TABLE Temp_Inspection_Result_Cube AS
-SELECT
-    dr.Restaurant_Key,
-    dg.Grade_Type_Key,
-    COUNT(fi.Restaurant_Key) AS Inspection_Count
-FROM
-    Fact_Inspection fi
-    JOIN dimension_Restaurant dr ON fi.Restaurant_Key = dr.Restaurant_Key
-    JOIN dimension_Grade_Type dg ON fi.Grade_Type_Key = dg.Grade_Type_Key
-GROUP BY
-    dr.Restaurant_Key,
-    dg.Grade_Type_Key;
 
--- Query the temporary table to get the desired data cube
-SELECT
-    tr.Restaurant_Key,
-    dg.Grade_Type,
-    COALESCE(tirc.Inspection_Count, 0) AS Inspection_Count
-FROM
-    dimension_Restaurant tr
-    CROSS JOIN dimension_Grade_Type dg
-    LEFT JOIN Temp_Inspection_Result_Cube tirc
-        ON tr.Restaurant_Key = tirc.Restaurant_Key
-        AND dg.Grade_Type_Key = tirc.Grade_Type_Key;
-
--- Drop the temporary table
-DROP TABLE IF EXISTS Temp_Inspection_Result_Cube;
 
 
 
 -- TODO: CORRECT FACT TABLE BELOW COMING SOON
---
+
+SELECT dr.Restaurant_Key,
+       dl.LocationKey
+FROM table_inspection tri
+         JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
+         JOIN dimension_location dl ON dl.LocationKey = (SELECT id FROM table_address ta where ta.id = dl.LocationKey)
+
+
+
+-- TODO TEST FACT TABLE
+CREATE TABLE Fact_Inspection_Test
+(
+    Restaurant_Key      INT,
+    Violation_Key       INT,
+    Inspection_Type_Key INT,
+    Inspection_Date_Key INT,
+    Grade_Date_Key      INT,
+    Critical_Flag_Key   INT,
+    Grade_Type_Key      INT,
+    Action_Type_Key     INT,
+    Score               DOUBLE PRECISION,
+    FOREIGN KEY (Restaurant_Key) REFERENCES dimension_Restaurant (Restaurant_Key),
+    FOREIGN KEY (Violation_Key) REFERENCES dimension_Violation (Violation_Key),
+    FOREIGN KEY (Inspection_Type_Key) REFERENCES dimension_Inspection_Type (Inspection_Type_Key),
+    FOREIGN KEY (Inspection_Date_Key) REFERENCES dimension_date (date_key),
+    FOREIGN KEY (Grade_Date_Key) REFERENCES dimension_date (date_key),
+    FOREIGN KEY (Critical_Flag_Key) REFERENCES dimension_critical_flag (critical_flag_key) ,
+    FOREIGN KEY (Grade_Type_Key) REFERENCES dimension_Grade_Type (grade_type_key),
+    FOREIGN KEY (Action_Type_Key) REFERENCES dimension_action_type (Action_Type_Key)
+);
+
+INSERT INTO Fact_Inspection_Test (
+    Restaurant_Key,
+    Violation_Key,
+    Inspection_Type_Key,
+    Inspection_Date_Key,
+    Grade_Date_Key,
+    Critical_Flag_Key,
+    Grade_Type_Key,
+    Action_Type_Key,
+    Score
+)
+SELECT
+    dr.Restaurant_Key,
+    tv.Violation_Key,
+    dit.Inspection_Type_Key,
+    dd.Date_Key as Inspection_Date_Key,
+    id.Date_Key as Grade_Date_Key,
+    dcf.Critical_Flag_Key,
+    dgt.Grade_Type_Key,
+    dat.Action_Type_Key,
+    data."SCORE"
+FROM
+    table_restaurant_inspection_dataset data
+JOIN DIMENSION_RESTAURANT dr on dr.CAMIS = data."CAMIS"
+JOIN dimension_Violation tv ON tv.violation_code = data."VIOLATION CODE" -- Assuming this is the correct column name
+JOIN dimension_Inspection_Type dit ON dit.Inspection_Type = data."INSPECTION TYPE" -- Assuming this is the correct column name
+JOIN dimension_Date dd ON dd.Complete_Date = data."INSPECTION DATE"
+JOIN dimension_Date id ON id.Complete_Date = data."GRADE DATE"
+JOIN dimension_Grade_Type dgt ON dgt.Grade_Type = data."GRADE" -- Assuming this is the correct column name
+JOIN dimension_critical_flag dcf ON dcf.Flag = data."CRITICAL FLAG"
+JOIN dimension_action_type dat ON dat.Action_Type = data."ACTION";
+
+
+SELECT DISTINCT * from Fact_Inspection_Test where Restaurant_Key = 5374;
+
+SELECT * FROM dimension_restaurant where RESTAURANT_KEY = 5374;
+-- DATA CUBE
+
+
 -- SELECT *
 -- from table_restaurant;
 --
