@@ -178,6 +178,22 @@ ORDER BY COALESCE("BORO", NULL);
 SELECT *
 FROM table_borough;
 
+-- TODO: TABLE COUNCIL DISTRICT TYPE
+CREATE TABLE IF NOT EXISTS table_council_district
+(
+    id      SERIAL PRIMARY KEY,
+
+
+);
+
+INSERT INTO table_borough (name)
+SELECT DISTINCT COALESCE("BORO", NULL)
+FROM public.table_restaurant_inspection_dataset
+ORDER BY COALESCE("BORO", NULL);
+
+SELECT *
+FROM table_borough;
+
 
 -- TODO: ADDRESS TABLE
 -- SELECT COUNT(*)

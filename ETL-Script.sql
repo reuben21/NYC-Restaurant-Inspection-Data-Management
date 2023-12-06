@@ -1,33 +1,98 @@
 -- Dimension Tables
 
--- TODO: DIMENSION RESTAURANT DONE
-CREATE TABLE dimension_Restaurant
+-- TODO : DIMENSION LOCATION
+CREATE TABLE Dimension_Location
 (
-    Restaurant_Key SERIAL PRIMARY KEY,
-    CAMIS          BIGINT,
-    Name           VARCHAR(255),
-    Phone          VARCHAR(15)
+    LocationKey  INT PRIMARY KEY,
+    BuildingName TEXT,
+    StreetName   TEXT,
+    ZipCode      DOUBLE PRECISION,
+    Borough      INT
 );
 
-INSERT INTO dimension_Restaurant (CAMIS, Name, Phone)
-SELECT DISTINCT CAMIS, dba, Phone
-FROM table_restaurant;
+-- Insert data into dimension_Grade_Type from source_table
+INSERT INTO Dimension_Location (LocationKey, BuildingName, StreetName, ZipCode, Borough)
+SELECT DISTINCT id, building, street, zipcode, borough_id
+FROM table_address;
 
 SELECT *
-FROM dimension_Restaurant;
+FROM Dimension_Location
+where LocationKey = 1;
 
+SELECT *
+FROM table_address
+where id = 1;
+
+-- TODO: DIMENSION RESTAURANT DONE
+CREATE TABLE dimension_cuisine
+(
+    Cuisine_Key INT PRIMARY KEY,
+    type        text
+);
+
+INSERT INTO dimension_cuisine (CUISINE_KEY, TYPE)
+SELECT id, type
+FROM table_cuisine;
+
+SELECT *
+from dimension_cuisine;
+
+-- TODO: DIMENSION RESTAURANT DONE
+CREATE TABLE DIMENSION_RESTAURANT
+(
+    RESTAURANT_KEY INT PRIMARY KEY,
+    CAMIS          BIGINT,
+    NAME           VARCHAR(255),
+    PHONE          VARCHAR(15),
+    CUISINE_KEY    INT,
+    LOCATION_KEY   INT,
+    FOREIGN KEY (CUISINE_KEY) REFERENCES dimension_Cuisine (Cuisine_Key),
+    FOREIGN KEY (LOCATION_KEY) REFERENCES dimension_location (LocationKey)
+);
+
+INSERT INTO dimension_restaurant (RESTAURANT_KEY, CAMIS, NAME, Phone, Cuisine_Key,location_key)
+SELECT tr.id, tr.camis, tr.dba, tr.Phone, dc.Cuisine_Key,tr.address_id
+FROM table_restaurant tr
+         JOIN dimension_cuisine dc on dc.Cuisine_Key = tr.cuisine_id;
+
+SELECT *
+FROM dimension_Restaurant where RESTAURANT_KEY=1;
+
+SELECT * FROM table_restaurant where id =1;
+
+-- TODO: DIMENSION CRITICAL TYPE
+-- Create dimension_Grade_Type table
+-- DROP TABLE dimension_critical_flag;
+CREATE TABLE dimension_critical_flag
+(
+    Critical_Flag_Key INT PRIMARY KEY,
+    Flag     text
+);
+
+
+-- Insert data into dimension_Grade_Type from source_table
+INSERT INTO dimension_critical_flag (Critical_Flag_Key, Flag)
+SELECT DISTINCT id, flag
+FROM table_critical_flag;
+
+SELECT *
+FROM dimension_critical_flag;
+
+SELECT *
+from table_critical_flag;
 
 -- TODO: DIMENSION VIOLATION DONE
 CREATE TABLE dimension_Violation
 (
-    Violation_Key         SERIAL PRIMARY KEY,
+    Violation_Key         INT PRIMARY KEY,
     Violation_Code        VARCHAR(10),
     Violation_Description TEXT
 );
 
 -- Insert data into dimension_Violation from another table
-INSERT INTO dimension_Violation (Violation_Code, Violation_Description)
-SELECT code,
+INSERT INTO dimension_Violation (Violation_Key, Violation_Code, Violation_Description)
+SELECT id,
+       code,
        description
 FROM table_violation;
 
@@ -37,13 +102,13 @@ FROM dimension_Violation;
 -- TODO: DIMENSION INSPECTION DONE
 CREATE TABLE dimension_Inspection_Type
 (
-    Inspection_Type_Key SERIAL PRIMARY KEY,
+    Inspection_Type_Key INT PRIMARY KEY,
     Inspection_Type     TEXT
 );
 
 -- Assuming source_table has the same structure as dimension_Inspection_Type
-INSERT INTO dimension_Inspection_Type (Inspection_Type)
-SELECT type
+INSERT INTO dimension_Inspection_Type (Inspection_Type_Key, Inspection_Type)
+SELECT id, type
 FROM table_inspection_type;
 
 SELECT *
@@ -71,34 +136,34 @@ SELECT *
 FROM dimension_Date;
 
 
--- TODO: DIMENSION CUISINE
-CREATE TABLE dimension_Cuisine
-(
-    Cuisine_Key  SERIAL PRIMARY KEY,
-    Cuisine_Type VARCHAR(100)
-);
+-- where LocationKey = 1;
 
-INSERT INTO dimension_Cuisine (Cuisine_Type)
-SELECT DISTINCT type
-FROM table_cuisine;
---
+SElECT *
+FROM table_address;
 
 -- TODO: DIMENSION GRADE TYPE
 -- Create dimension_Grade_Type table
 CREATE TABLE dimension_Grade_Type
 (
-    Grade_Type_Key SERIAL PRIMARY KEY,
+    Grade_Type_Key INT PRIMARY KEY,
     Grade_Type     VARCHAR(5)
 );
 
+
 -- Insert data into dimension_Grade_Type from source_table
-INSERT INTO dimension_Grade_Type (Grade_Type)
-SELECT DISTINCT type
+INSERT INTO dimension_Grade_Type (Grade_Type_Key, Grade_Type)
+SELECT DISTINCT id, type
 FROM table_grade_type;
 
 SELECT *
 FROM dimension_Grade_Type;
--- Fact Table
+
+SELECT *
+from table_grade_type;
+
+
+
+-- TODO: Fact Table
 
 CREATE TABLE Fact_Inspection
 (
@@ -107,7 +172,7 @@ CREATE TABLE Fact_Inspection
     Inspection_Type_Key INT,
     Inspection_Date_Key INT,
     Grade_Date_Key      INT,
-    Cuisine_Key         INT,
+    Critical_Flag_Key   INT,
     Grade_Type_Key      INT,
     Score               DOUBLE PRECISION,
     FOREIGN KEY (Restaurant_Key) REFERENCES dimension_Restaurant (Restaurant_Key),
@@ -115,11 +180,12 @@ CREATE TABLE Fact_Inspection
     FOREIGN KEY (Inspection_Type_Key) REFERENCES dimension_Inspection_Type (Inspection_Type_Key),
     FOREIGN KEY (Inspection_Date_Key) REFERENCES dimension_date (date_key),
     FOREIGN KEY (Grade_Date_Key) REFERENCES dimension_date (date_key),
-    FOREIGN KEY (Cuisine_Key) REFERENCES dimension_Cuisine (cuisine_key),
+    FOREIGN KEY (Critical_Flag_Key) REFERENCES dimension_critical_flag (critical_flag_key) ,
     FOREIGN KEY (Grade_Type_Key) REFERENCES dimension_Grade_Type (grade_type_key)
 
 );
 
+DROP TABLE fact_inspection;
 
 -- Insert data into Fact_Inspection
 INSERT INTO Fact_Inspection (Restaurant_Key,
@@ -127,49 +193,81 @@ INSERT INTO Fact_Inspection (Restaurant_Key,
                              Inspection_Type_Key,
                              Inspection_Date_Key,
                              Grade_Date_Key,
-                             Cuisine_Key,
+                             Critical_Flag_Key,
                              Grade_Type_Key,
                              Score)
 SELECT dr.Restaurant_Key,
        dv.Violation_Key,
        dit.Inspection_Type_Key,
-       di.Date_Key as Inspection_Date_Key,
-       dg.Date_Key as Grade_Date_Key,
-       dc.Cuisine_Key,
-       dgt.Grade_Type_Key,
-       tri."SCORE"
-FROM table_inspection tri
-         RIGHT JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.Restaurant_Key
-         RIGHT JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
-         RIGHT JOIN dimension_Inspection_Type dit ON tri."INSPECTION TYPE" = dit.Inspection_Type
-         RIGHT JOIN dimension_Date di ON tri."INSPECTION DATE" = di.Complete_Date
-         RIGHT JOIN dimension_Date dg ON tri."GRADE DATE" = dg.Complete_Date
-         RIGHT JOIN dimension_Cuisine dc ON tri."CUISINE DESCRIPTION"= dc.Cuisine_Type
-         RIGHT JOIN dimension_Grade_Type dgt ON tri."GRADE" = dgt.Grade_Type;
+       di.Date_Key    as Inspection_Date_Key,
+       dg.Date_Key    as Grade_Date_Key,
+       trslts.critical_flag_id,
+       trslts.grade_type_id,
+       trslts."SCORE"
 
-SELECT count(dr.Restaurant_Key)
-FROM table_restaurant tr
-    JOIN dimension_Restaurant dr on dr.camis = tr.camis;
+FROM table_results trslts,table_inspection tri
+         JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
+         JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
+         JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
+         JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
+         JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
+         where tri.inspection_result = trslts.id;
+
+SELECT * FROM Fact_Inspection;
+
+
+
+
+
+
 
 -- TODO: CORRECT FACT TABLE BELOW COMING SOON
-SELECT dr.Restaurant_Key,
-       dv.Violation_Key,
-       dit.Inspection_Type_Key,
-       di.Date_Key as Inspection_Date_Key,
-       dg.Date_Key as Grade_Date_Key
-       FROM table_inspection tri
-       RIGHT JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.Restaurant_Key
-       RIGHT JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
-       RIGHT JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
-       RIGHT JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
-       RIGHT JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date;
-
-
-
-SELECT count(*) FROM table_results;
-
-SELECT *
-FROM Fact_Inspection;
-
-SELECT count(*)
-FROM Fact_Inspection;
+--
+-- SELECT *
+-- from table_restaurant;
+--
+--
+-- select *
+-- from dimension_restaurant
+-- where RESTAURANT_KEY = 137;
+--
+-- select *
+-- from table_restaurant
+-- where id = 137;
+--
+-- select *
+-- from dimension_location
+-- where LocationKey = 19438;
+--
+-- select *
+-- from table_address
+-- where id = 19438;
+--
+--
+-- SELECT count(*)
+-- FROM table_results;
+--
+-- SELECT *
+-- FROM table_restaurant where id = 10;
+--
+-- SELECT *
+-- FROM dimension_Restaurant;
+--
+--
+--
+-- SELECT * from dimension_Date where Date_Key = 3557;
+--
+-- select * from table_violation where id = 91;
+--
+-- select * from dimension_Violation where Violation_Key = 91;
+--
+-- SELECT *
+-- FROM Fact_Inspection fi
+-- where fi.Restaurant_Key = 10;
+--
+-- SELECT * FROM table_inspection where restaurant_info = 10;
+--
+-- SELECT * from table_results tr where tr.id = 36628;
+--
+-- SELECT * FROM table_critical_flag where id = 3;
+-- SELECT * FROM table_grade_type where id=1;
