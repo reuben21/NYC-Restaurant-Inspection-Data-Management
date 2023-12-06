@@ -331,7 +331,7 @@ WITH CamisQuery AS (
     WHERE CAMIS = '50066048'
 )
 
-SELECT fi.*,
+SELECT
        dr.NAME AS RestaurantName,
        dr.PHONE AS RestaurantPhone,
        dc.TYPE AS CuisineType,
@@ -346,7 +346,8 @@ SELECT fi.*,
        dd_grade.Complete_Date AS GradeDate,
        dcf.Flag AS CriticalFlag,
        dgt.Grade_Type AS GradeType,
-       dat.Action_Type AS ActionType
+       dat.Action_Type AS ActionType,
+       Fi.Score
 FROM Fact_Inspection fi
          JOIN dimension_Restaurant dr ON fi.Restaurant_Key = dr.RESTAURANT_KEY
          JOIN dimension_cuisine dc ON dr.CUISINE_KEY = dc.CUISINE_KEY
