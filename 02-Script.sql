@@ -355,29 +355,34 @@ CREATE TABLE table_inspection
 
 
 -- Insert data into table_inspection using the generated ID
-INSERT INTO table_inspection (RESTAURANT_INFO,
+INSERT INTO table_inspection (
+                       RESTAURANT_INFO,
                        VIOLATION_ID,
                        INSPECTION_TYPE_ID,
                        "INSPECTION DATE",
                        "GRADE DATE",
                        INSPECTION_RESULT)
-SELECT M."ID",
+SELECT
+       M."ID",
        V.id,
        it.id,
        M."INSPECTION DATE",
        M."GRADE DATE",
        M."ID"
 FROM public.table_restaurant_inspection_dataset M
-         LEFT JOIN table_violation V ON M."VIOLATION CODE" = V.code
+         LEFT JOIN table_restaurant tr on tr.ID = M."ID"
+         LEFT JOIN table_violation V ON M."VIOLATION CODE" = V.code and M."VIOLATION DESCRIPTION" = V.description
          LEFT JOIN table_inspection_type it ON M."INSPECTION TYPE" = it.type;
 
 
 SELECT COUNT(ID) FROM table_restaurant order by ID;
 
-SELECT *
-from table_inspection;
+SELECT DISTINCT COUNT(*)
+from table_inspection ;
 
-SELECT * from table_inspection where RESTAURANT_INFO =204901;
+SELECT * from table_inspection where RESTAURANT_INFO =88819;
 SELECT * from table_results where id =204901;
 
-SELECT *  FROM table_restaurant_inspection_dataset where "ID" = 204901;
+SELECT * FROM table_restaurant where CAMIS = 50066048;
+
+SELECT *  FROM table_restaurant_inspection_dataset where "CAMIS" = 50066048;

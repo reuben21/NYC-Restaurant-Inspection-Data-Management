@@ -230,22 +230,23 @@ SELECT dr.Restaurant_Key,
        trslts.grade_type_id,
        trslts.action_id,
        trslts."SCORE"
-
 FROM table_inspection tri
          LEFT JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
          LEFT JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
          LEFT JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
          LEFT JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
          LEFT JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
-         LEFT JOIN  table_results trslts ON  trslts.id =tri.inspection_result;
+         LEFT JOIN table_results trslts ON  trslts.id = tri.inspection_result;
 
 SELECT DISTINCT * FROM Fact_Inspection ;
 
 
 
-SELECT DISTINCT * from fact_inspection where Restaurant_Key = 5374;
+SELECT DISTINCT * from fact_inspection where Restaurant_Key = 59512;
 
-SELECT * FROM dimension_restaurant where RESTAURANT_KEY = 5374;
+SELECT * FROM dimension_restaurant where RESTAURANT_KEY = 59512;
+
+SELECT * FROM dimension_restaurant where CAMIS = 41086770;
 
 SELECT * FROM table_inspection where restaurant_info = 5374;
 -- DATA CUBE
@@ -321,7 +322,49 @@ JOIN dimension_action_type dat ON dat.Action_Type = data."ACTION";
 SELECT DISTINCT * from Fact_Inspection_Test where Restaurant_Key = 5374;
 
 SELECT * FROM dimension_restaurant where RESTAURANT_KEY = 5374;
--- DATA CUBE
+-- TODO: DATA CUBE
+
+-- Replace 'your_camis_id' with the actual CAMIS ID you are interested in
+WITH CamisQuery AS (
+    SELECT Restaurant_Key
+    FROM dimension_Restaurant
+    WHERE CAMIS = '50066048'
+)
+
+SELECT fi.*,
+       dr.NAME AS RestaurantName,
+       dr.PHONE AS RestaurantPhone,
+       dc.TYPE AS CuisineType,
+       dl.BuildingName,
+       dl.StreetName,
+       dl.ZipCode,
+       dl.Borough,
+       dv.Violation_Code,
+       dv.Violation_Description,
+       dit.Inspection_Type AS InspectionType,
+       dd_complete.Complete_Date AS InspectionDate,
+       dd_grade.Complete_Date AS GradeDate,
+       dcf.Flag AS CriticalFlag,
+       dgt.Grade_Type AS GradeType,
+       dat.Action_Type AS ActionType
+FROM Fact_Inspection fi
+         JOIN dimension_Restaurant dr ON fi.Restaurant_Key = dr.RESTAURANT_KEY
+         JOIN dimension_cuisine dc ON dr.CUISINE_KEY = dc.CUISINE_KEY
+         JOIN Dimension_Location dl ON dr.LOCATION_KEY = dl.LocationKey
+         JOIN dimension_Violation dv ON fi.Violation_Key = dv.Violation_Key
+         JOIN dimension_Inspection_Type dit ON fi.Inspection_Type_Key = dit.Inspection_Type_Key
+         JOIN dimension_Date dd_complete ON fi.Inspection_Date_Key = dd_complete.Date_Key
+         JOIN dimension_Date dd_grade ON fi.Grade_Date_Key = dd_grade.Date_Key
+         JOIN dimension_critical_flag dcf ON fi.Critical_Flag_Key = dcf.Critical_Flag_Key
+         JOIN dimension_Grade_Type dgt ON fi.Grade_Type_Key = dgt.Grade_Type_Key
+         JOIN dimension_action_type dat ON fi.Action_Type_Key = dat.Action_Type_Key
+WHERE fi.Restaurant_Key IN (SELECT Restaurant_Key FROM CamisQuery);
+
+
+
+
+
+
 
 
 -- SELECT *
