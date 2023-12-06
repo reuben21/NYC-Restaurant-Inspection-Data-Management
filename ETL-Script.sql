@@ -161,6 +161,24 @@ FROM dimension_Grade_Type;
 SELECT *
 from table_grade_type;
 
+-- TODO: ACTION TYPE
+-- Create dimension_Grade_Type table
+CREATE TABLE dimension_action_type
+(
+    Action_Type_Key INT PRIMARY KEY,
+    Action_Type     text
+);
+
+
+-- Insert data into dimension_Grade_Type from source_table
+INSERT INTO dimension_action_type (Action_Type_Key, Action_Type)
+SELECT id,type
+FROM table_action_type;
+
+SELECT *
+FROM dimension_action_type;
+
+
 
 
 -- TODO: Fact Table
@@ -174,6 +192,7 @@ CREATE TABLE Fact_Inspection
     Grade_Date_Key      INT,
     Critical_Flag_Key   INT,
     Grade_Type_Key      INT,
+    Action_Type_Key     INT,
     Score               DOUBLE PRECISION,
     FOREIGN KEY (Restaurant_Key) REFERENCES dimension_Restaurant (Restaurant_Key),
     FOREIGN KEY (Violation_Key) REFERENCES dimension_Violation (Violation_Key),
@@ -181,7 +200,8 @@ CREATE TABLE Fact_Inspection
     FOREIGN KEY (Inspection_Date_Key) REFERENCES dimension_date (date_key),
     FOREIGN KEY (Grade_Date_Key) REFERENCES dimension_date (date_key),
     FOREIGN KEY (Critical_Flag_Key) REFERENCES dimension_critical_flag (critical_flag_key) ,
-    FOREIGN KEY (Grade_Type_Key) REFERENCES dimension_Grade_Type (grade_type_key)
+    FOREIGN KEY (Grade_Type_Key) REFERENCES dimension_Grade_Type (grade_type_key),
+    FOREIGN KEY (Action_Type_Key) REFERENCES dimension_action_type (Action_Type_Key)
 
 );
 
@@ -195,6 +215,7 @@ INSERT INTO Fact_Inspection (Restaurant_Key,
                              Grade_Date_Key,
                              Critical_Flag_Key,
                              Grade_Type_Key,
+                             Action_Type_Key,
                              Score)
 SELECT dr.Restaurant_Key,
        dv.Violation_Key,
@@ -203,6 +224,7 @@ SELECT dr.Restaurant_Key,
        dg.Date_Key    as Grade_Date_Key,
        trslts.critical_flag_id,
        trslts.grade_type_id,
+       trslts.action_id,
        trslts."SCORE"
 
 FROM table_results trslts,table_inspection tri
@@ -213,11 +235,60 @@ FROM table_results trslts,table_inspection tri
          JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
          where tri.inspection_result = trslts.id;
 
-SELECT * FROM Fact_Inspection;
+SELECT * FROM Fact_Inspection ;
+
+SELECT dr.Restaurant_Key,
+       dl.LocationKey,
+       dv.Violation_Key,
+       dit.Inspection_Type_Key,
+       di.Date_Key    as Inspection_Date_Key,
+       dg.Date_Key    as Grade_Date_Key,
+       trslts.critical_flag_id,
+       trslts.grade_type_id,
+       trslts."SCORE"
+
+FROM table_results trslts,
+     table_address ta,
+     dimension_location dl,
+     table_inspection tri
+         JOIN dimension_Restaurant dr ON tri.restaurant_info = dr.RESTAURANT_KEY
+         JOIN dimension_location dl ON ta.id = dl.LocationKey
+         JOIN dimension_Violation dv ON tri.violation_id = dv.Violation_Key
+         JOIN dimension_Inspection_Type dit ON tri.inspection_type_id = dit.Inspection_Type_Key
+         JOIN dimension_Date di ON tri."INSPECTION DATE"::DATE = di.Complete_Date
+         JOIN dimension_Date dg ON tri."GRADE DATE"::DATE = dg.Complete_Date
+         where tri.inspection_result = trslts.id;
 
 
+-- DATA CUBE
+-- Create a temporary table to store aggregated results
+CREATE TEMPORARY TABLE Temp_Inspection_Result_Cube AS
+SELECT
+    dr.Restaurant_Key,
+    dg.Grade_Type_Key,
+    COUNT(fi.Restaurant_Key) AS Inspection_Count
+FROM
+    Fact_Inspection fi
+    JOIN dimension_Restaurant dr ON fi.Restaurant_Key = dr.Restaurant_Key
+    JOIN dimension_Grade_Type dg ON fi.Grade_Type_Key = dg.Grade_Type_Key
+GROUP BY
+    dr.Restaurant_Key,
+    dg.Grade_Type_Key;
 
+-- Query the temporary table to get the desired data cube
+SELECT
+    tr.Restaurant_Key,
+    dg.Grade_Type,
+    COALESCE(tirc.Inspection_Count, 0) AS Inspection_Count
+FROM
+    dimension_Restaurant tr
+    CROSS JOIN dimension_Grade_Type dg
+    LEFT JOIN Temp_Inspection_Result_Cube tirc
+        ON tr.Restaurant_Key = tirc.Restaurant_Key
+        AND dg.Grade_Type_Key = tirc.Grade_Type_Key;
 
+-- Drop the temporary table
+DROP TABLE IF EXISTS Temp_Inspection_Result_Cube;
 
 
 
